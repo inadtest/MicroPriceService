@@ -1,0 +1,63 @@
+
+The	firm	is	designing	a	multi-exchange	trading	strategy.		The	trading	strategy	runs	collocated	at Exchange	A,	but
+needs	micro-price	information	from	Exchange	B.		The	exchanges	are	geographically	distant, and	data	is	transmitted
+via	a	low-latency but	limited-bandwidth	microwave	network.		It	is	not	possible	to	transmit	the	entire	exchange	feed
+over	this	network,	so	we	decide	instead	to	transmit	only	our	proprietary	micro-prices derived	from	B,	which	are
+more	compact	and	change	less	frequently.		Your	task	is	to	build	the	micro-price	service,	which	will	be	collocated	at
+Exchange	B,	will	consume	B’s	market	data	feed,	calculate	micro-price	information,	and	transmit	the	results	to	the
+trading	system	at	Exchange	A.
+Exchange	B	Message Specification
+The	exchange	provides	a	multicast	feed	which	supports	the	following	binary	message
+Field	name Bytes Type Description
+Message	Length 4 Unsigned	int The	length	in	bytes	of	the	remaining	part	of	this
+message,	starting	with	the	next	field	SecurityId
+Security	Id 4 Unsigned	int Unique	id	of	the	security
+Number	of	Updates 2 Unsigned	int
+The	number	of	order	book	level	updates
+contained	in	this	message.		Each	level	update	is	a
+sub-message	defined	below
+→ level 1 Unsigned	int Order	book	level,	0-9
+→ side 1 Unsigned	int 0	=	Bid,	1	=	ask
+→ scaled	Price 8 Signed	int
+Scaled	price	for	the	given	level.		Actual	prices	are
+floating	point	numbers.		This	field	contains	the
+integral	number	(actual	price	x	10^9)
+→ qty 4 Unsigned	int Order	book	quantity	for	the	give	level.
+2
+Micro-price	Library
+You	have	the	following	library	to	calculate	micro-prices.		MicroPriceCalculator	is	fully	implemented,	but	OrderBook
+is	an	interface	that	must	be	implemented	by	the	user	application.
+ public class MicroPriceCalculator {
+ public MicroPriceCalculator() {
+ …
+ }
+ public double calculateMicroPrice(OrderBook orderBook) {
+ …
+ }
+ }
+ public interface OrderBook {
+ public int numLevels();
+ public double bidPrice(int level);
+ public int bidSize(int level);
+ public double askPrice(int level);
+ public int askSize(int level);
+ }
+Internal	Message	Format
+Your	application	should	send	micro-prices	to	our	trading	system	at	Exchange	A	via	tcp,	using	the	following	binary
+message:
+Field	name Bytes Type Description
+security	id 4 Unsigned	int unique	id	of	the	security
+scaled micro-price 8 Signed	int micro-price	scaled	by	10^9
+Application	inputs
+1. Multicast	group	address	for	Exchange	B’s	market	data	feed
+2. Multicast	port	for	Exchange	B’s	market	data	feed
+3. Name	of	network	adapter	to	use	for	multicast
+4. Host	and	port	for	the	trading	system	at	Exchange	A
+3
+Assumptions	and	Requirements
+1. The	service	should	send	micro-prices	for	all	products	encountered	in	the	market	data	feed
+2. The	trading	system	at	Exchange	A	needs	only	the	latest	micro-price	per	security	at	any	given	moment	in
+time.		If	there	is	a	technical	reason	to	collapse	multiple	micro-price	updates	for	a	given	security,	it	is	ok to	do
+so.
+3. All	products	on	Exchange	B	have	10-level	order	books
+4. Each	UDP	packet	contains	a	single	order	book	update	message

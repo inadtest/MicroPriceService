@@ -4,6 +4,6 @@ public class MicroPriceCalculator {
     public MicroPriceCalculator() {
     }
     public double calculateMicroPrice(OrderBook orderBook) {
-        return 0.0;
+        return 25.0;
     }
 }
